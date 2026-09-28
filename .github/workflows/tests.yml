@@ -1,0 +1,39 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Run tests (headless Chrome)
+        run: mvn -B clean test -Dheadless=true
+
+      - name: Upload evidências (somente em falha)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencias
+          path: target/evidencias/
+
+      - name: Upload relatórios Surefire
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/

@@ -1,0 +1,48 @@
+# Sobe um Selenium Standalone (Chrome) + um container Maven que executa a suíte contra ele.
+#
+# Uso:
+#   docker compose up --build --abort-on-container-exit --exit-code-from tests
+#
+# Acompanhar a execução ao vivo (noVNC): http://localhost:7900  (senha padrão: secret)
+# Evidências e relatórios ficam no host em ./target (volume montado).
+
+services:
+  selenium:
+    # Em Mac com Apple Silicon (ARM), use: SELENIUM_IMAGE=selenium/standalone-chromium:latest
+    image: ${SELENIUM_IMAGE:-selenium/standalone-chrome:latest}
+    container_name: selenium-chrome
+    shm_size: "2gb"                 # evita crash do Chrome por falta de memória compartilhada
+    ports:
+      - "4444:4444"                 # WebDriver / Grid UI
+      - "7900:7900"                 # noVNC (visualizar o navegador)
+    environment:
+      - SE_NODE_MAX_SESSIONS=2
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+    healthcheck:
+      # string = executado via shell (equivale a CMD-SHELL)
+      test: >-
+        curl -sSf http://localhost:4444/status
+        | grep -qE '"ready": ?true'
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  tests:
+    image: maven:3.9-eclipse-temurin-17
+    container_name: saucedemo-tests
+    depends_on:
+      selenium:
+        condition: service_healthy  # só inicia os testes quando o Grid estiver pronto
+    working_dir: /app
+    volumes:
+      - ./:/app                     # código do projeto + saída em ./target no host
+      - maven-repo:/root/.m2        # cache das dependências entre execuções
+    environment:
+      # Nome do serviço "selenium" é resolvido pelo DNS interno da rede do compose.
+      # (Dentro de um container, "localhost" apontaria para o próprio container.)
+      - SELENIUM_REMOTE_URL=http://selenium:4444
+      - BROWSER=chrome
+    command: ["mvn", "-B", "clean", "test"]
+
+volumes:
+  maven-repo:

@@ -1,0 +1,17 @@
+# Build / relatórios / evidências
+target/
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# VS Code / Eclipse
+.vscode/
+.classpath
+.project
+.settings/
+
+# SO
+.DS_Store
+Thumbs.db
